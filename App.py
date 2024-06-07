@@ -1,3 +1,4 @@
+from sqlite3 import IntegrityError
 from flask import *
 import tensorflow as tf
 import os
@@ -5,8 +6,9 @@ from werkzeug.utils import secure_filename
 from keras.models import load_model
 import numpy as np
 from PIL import Image, ImageOps
-from model.models import db
+from model.models import User, db, DialectEnum
 from nlp import translate_traffic_sign_predict_to_local_dialect
+from otp import generate_otp
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -14,6 +16,7 @@ app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///driving_guide.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 
 db.init_app(app)
 
@@ -159,6 +162,68 @@ def upload():
         print(result)
         return result
     return None
+
+
+@app.route('/generate-otp', methods=['POST'])
+def generate_otp_endpoint():
+    data = request.json
+    msisdn = data.get('msisdn')
+    
+    response, status_code = generate_otp(msisdn)
+    return jsonify(response), status_code
+
+
+@app.route('/signup', methods=['POST'])
+def signup():
+    data = request.json
+    msisdn = data.get('msisdn')
+    local_dialect = data.get('local_dialect')
+    
+    if not msisdn or not local_dialect:
+        return jsonify({"error": "msisdn and local_dialect are required"}), 400
+    
+    try:
+        user = User(msisdn=msisdn, local_dialect=DialectEnum[local_dialect.upper()])
+        db.session.add(user)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "User with this msisdn already exists"}), 400
+    except KeyError:
+        return jsonify({"error": "Invalid local_dialect"}), 400
+    
+    
+    otp_response, status_code = generate_otp(msisdn)
+    
+    if status_code != 200:
+        return jsonify({"error": otp_response.get('error')}), status_code
+    
+    return jsonify({"message": "User registered successfully", "otp": otp_response}), 201
+
+
+
+
+app.route('/update_local_dialect', methods=['PUT'])
+def update_local_dialect():
+    data = request.json
+    user_id = data.get('user_id')
+    new_local_dialect = data.get('local_dialect')
+    
+    if not user_id or not new_local_dialect:
+        return jsonify({"error": "user_id and local_dialect are required"}), 400
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    try:
+        user.local_dialect = DialectEnum[new_local_dialect.upper()]
+        db.session.commit()
+        return jsonify({"message": "Local dialect updated successfully"}), 200
+    except KeyError:
+        return jsonify({"error": "Invalid local_dialect"}), 40
+    
+
 
 
 

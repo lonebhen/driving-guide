@@ -8,7 +8,7 @@ from model.models import NLPAPICache, db
 load_dotenv()
 
 
-api_key = os.getenv('API_KEY')
+api_key = os.getenv('NLP_API_KEY')
 
 
 def translate_traffic_sign_predict_to_local_dialect(traffic_sign):
