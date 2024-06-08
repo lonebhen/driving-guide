@@ -27,7 +27,7 @@ def generate_otp(msisdn):
 
     request_body = {
         "expiry": "5",
-        "length": "6",
+        "length": "4",
         "medium": "sms",
         "message": "This is OTP from Driving Guide, %otp_code%",
         "number": formatted_number,
