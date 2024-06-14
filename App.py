@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image, ImageOps
 from model.models import User, db, DialectEnum
 from nlp import translate_traffic_sign_predict_to_local_dialect
-from otp import generate_otp
+from otp import generate_otp, validate_otp
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -170,7 +170,19 @@ def generate_otp_endpoint():
     msisdn = data.get('msisdn')
     
     response, status_code = generate_otp(msisdn)
+    print(response)
     return jsonify(response), status_code
+
+
+app.route('/validate-otp', methods = ['POST'])
+def validate_otp_endpoint():
+    data = request.json
+    code = data.get("code")
+    msisdn = data.get("msisdn")
+    
+    respone, status_code = validate_otp(code, msisdn)
+    
+    return jsonify(respone), status_code
 
 
 @app.route('/signup', methods=['POST'])
