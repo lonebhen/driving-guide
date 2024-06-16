@@ -37,7 +37,7 @@ def generate_otp(msisdn):
         "medium": "sms",
         "message": "This is OTP from Driving Guide, %otp_code%",
         "number": formatted_number,
-        "sender_id": "Driving Guide",
+        "sender_id": "Driving",
         "type": "numeric"
     }
 
