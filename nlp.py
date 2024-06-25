@@ -4,11 +4,15 @@ import requests
 
 from model.models import NLPAPICache, db
 
-
 load_dotenv()
 
 
 api_key = os.getenv('NLP_API_KEY')
+
+headers = {
+        'Content-Type': 'application/json',
+        'Ocp-Apim-SUbscription-Key': api_key
+    }
 
 
 def translate_traffic_sign_predict_to_local_dialect(traffic_sign):
@@ -22,10 +26,6 @@ def translate_traffic_sign_predict_to_local_dialect(traffic_sign):
     
     url = 'https://translation-api.ghananlp.org/v1/translate'
     
-    headers = {
-        'Content-Type': 'application/json',
-        'Ocp-Apim-SUbscription-Key': api_key
-    }
     
     data = {
         "in": traffic_sign,
@@ -57,4 +57,27 @@ def translate_traffic_sign_predict_to_local_dialect(traffic_sign):
     
     else:
         print(f"API request failed with status code: {response.status_code}")
+        return None
+    
+    
+    
+def text_to_speech(text: str):
+    url = 'https://translation-api.ghananlp.org/tts/v1/tts'
+    
+    data = {
+        "in": text,
+        "lang": "en-tw"
+    }     
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()  # Raise an error for bad responses (4xx or 5xx)
+        
+        # Assuming the API returns audio content directly
+        audio_content = response.content
+        
+        return audio_content
+    
+    except requests.exceptions.RequestException as e:
+        # Handle any request exceptions
+        print(f"Error fetching TTS: {e}")
         return None
