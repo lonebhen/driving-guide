@@ -7,12 +7,15 @@ from keras.models import load_model
 import numpy as np
 from PIL import Image, ImageOps
 from model.models import User, db, DialectEnum
-from nlp import translate_traffic_sign_predict_to_local_dialect
+from nlp import translate_traffic_sign_predict_to_local_dialect, text_to_speech
 from otp import generate_otp, validate_otp
+from flask_cors import CORS
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 app = Flask(__name__)
+
+CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///driving_guide.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -140,13 +143,13 @@ def model_predict(img_path):
     
     resolved_prediction =  class_names[classes[ind]]
     
-    return translate_traffic_sign_predict_to_local_dialect(resolved_prediction)
+    traffic_sign =  translate_traffic_sign_predict_to_local_dialect(resolved_prediction)
+    
+    to_speech = text_to_speech(traffic_sign)
+    
+    return to_speech
     
     
-    
-    
-    
-
 
 
 @app.route('/predict', methods=['GET', 'POST'])
@@ -160,7 +163,9 @@ def upload():
         # Make prediction
         result = model_predict(file_path)
         print(result)
-        return result
+        f.close()               
+        return send_file(result, mimetype='audio/wav', as_attachment=True, attachment_filename='output.wav')
+        
     return None
 
 
@@ -244,4 +249,4 @@ if __name__ == '__main__':
     
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
