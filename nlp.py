@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import requests
+import uuid
 
 from model.models import NLPAPICache, db
 
@@ -63,11 +64,14 @@ def translate_traffic_sign_predict_to_local_dialect(traffic_sign):
     
 def text_to_speech(text: str):
     url = 'https://translation-api.ghananlp.org/tts/v1/tts'
-    
+    headers = {
+        'Content-Type': 'application/json'
+    }
     data = {
         "in": text,
         "lang": "en-tw"
-    }     
+    }
+    
     try:
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()  # Raise an error for bad responses (4xx or 5xx)
@@ -75,7 +79,14 @@ def text_to_speech(text: str):
         # Assuming the API returns audio content directly
         audio_content = response.content
         
-        return audio_content
+        # Save the audio content to a file with a unique name
+        unique_filename = f'output_{uuid.uuid4()}.wav'
+        output_path = os.path.join('audio_files', unique_filename)
+        
+        with open(output_path, 'wb') as audio_file:
+            audio_file.write(audio_content)
+        
+        return output_path
     
     except requests.exceptions.RequestException as e:
         # Handle any request exceptions
