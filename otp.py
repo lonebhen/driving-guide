@@ -13,8 +13,7 @@ client = requests.Session()
 api_key = os.getenv('ARKESEL_OTP_KEY')
 
 headers = {
-    "api-key": "aUFoVG9FVmlPbFlscW50WlJrb3A",
-    "Content-Type": "application/json"
+    "api-key": "aUFoVG9FVmlPbFlscW50WlJrb3A"
 }
 
 request_otp_url = "https://sms.arkesel.com/api/otp/generate"
@@ -33,10 +32,10 @@ def generate_otp(msisdn):
 
     request_body = {
         "expiry": "5",
-        "length": "4",
+        "length": "6",
         "medium": "sms",
         "message": "This is OTP from Driving Guide, %otp_code%",
-        "number": formatted_number,
+        "number": str(formatted_number),
         "sender_id": "Driving",
         "type": "numeric"
     }
