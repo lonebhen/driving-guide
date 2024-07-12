@@ -13,7 +13,7 @@ client = requests.Session()
 api_key = os.getenv('ARKESEL_OTP_KEY')
 
 headers = {
-    "api-key": "aUFoVG9FVmlPbFlscW50WlJrb3A"
+    "api-key": api_key
 }
 
 request_otp_url = "https://sms.arkesel.com/api/otp/generate"
@@ -22,9 +22,6 @@ validate_otp_url = "https://sms.arkesel.com/api/otp/verify"
     
     
 def generate_otp(msisdn):
-    print(api_key)
-    print(headers.get("api-key"))
-    print(type(api_key))
     formatted_number = phone_number_format(msisdn)
 
     if not formatted_number:
