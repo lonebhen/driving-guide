@@ -149,6 +149,10 @@ def model_predict(img_path, local_dialect):
     to_speech = text_to_speech(traffic_sign, local_dialect)
     
     return to_speech
+
+@app.route('/hello', methods= ['GET'])
+def keep_server_awake():
+    return "Hello World"
     
     
 
