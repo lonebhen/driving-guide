@@ -22,6 +22,7 @@ validate_otp_url = "https://sms.arkesel.com/api/otp/verify"
     
     
 def generate_otp(msisdn):
+    print(api_key)
     formatted_number = phone_number_format(msisdn)
 
     if not formatted_number:
@@ -48,20 +49,23 @@ def generate_otp(msisdn):
 
 
 def validate_otp(code, msisdn):
-    
     formatted_number = phone_number_format(msisdn)
 
     if not formatted_number:
         return {"error": "Invalid phone number"}, 400
     
     request_body = {
-    "code": code,
-    "number": formatted_number
+        "code": code,
+        "number": formatted_number
     }
     
+    
+    
     try:
-        response = client.post(validate_otp_url, headers=headers, json=request_body)
+        response = requests.post(validate_otp_url, headers=headers, json=request_body)
         response.raise_for_status()
         print(response.text)
+        return response.json(), 200
     except requests.exceptions.RequestException as e:
         print("An error occurred:", e)
+        return {"error": "Failed to validate OTP"}, 500

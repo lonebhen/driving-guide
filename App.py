@@ -1,3 +1,4 @@
+from io import BytesIO
 from sqlite3 import IntegrityError
 from flask import *
 import tensorflow as tf
@@ -7,7 +8,7 @@ from keras.models import load_model
 import numpy as np
 from PIL import Image, ImageOps
 from model.models import User, db, DialectEnum
-from nlp import translate_traffic_sign_predict_to_local_dialect, text_to_speech
+from nlp import translate_traffic_sign_predict_to_local_dialect, text_to_speech, translate_text, convert_text_to_speech
 from otp import generate_otp, validate_otp
 from flask_cors import CORS
 
@@ -129,7 +130,7 @@ class_names = {
             }
 
 
-def model_predict(img_path):
+def model_predict(img_path, local_dialect):
     model = load_model('./model/augmented.h5')
     image = Image.open(img_path)
     image = image.resize((32, 32))
@@ -143,9 +144,9 @@ def model_predict(img_path):
     
     resolved_prediction =  class_names[classes[ind]]
     
-    traffic_sign =  translate_traffic_sign_predict_to_local_dialect(resolved_prediction)
+    traffic_sign =  translate_traffic_sign_predict_to_local_dialect(resolved_prediction, local_dialect)
     
-    to_speech = text_to_speech(traffic_sign)
+    to_speech = text_to_speech(traffic_sign, local_dialect)
     
     return to_speech
     
@@ -159,12 +160,28 @@ def upload():
         f = request.files['file']
         file_path = secure_filename(f.filename)
         f.save(file_path)
+        
+        json_data = request.form.get('json')
+        if json_data:
+            try:
+                json_payload = json.loads(json_data)
+                local_dialect = json_payload.get('local_dialect')
+                # Use local_dialect as needed
+            except json.JSONDecodeError as e:
+                return jsonify({"error": "Invalid JSON data"}), 400
+        else:
+            return jsonify({"error": "No JSON data found in the request"}),
 
         # Make prediction
-        result = model_predict(file_path)
+        result = model_predict(file_path, local_dialect)
+        
+        if result is None:
+            return jsonify({"error": "Prediction failed, no result returned"}), 500
+
         print(result)
-        f.close()               
-        return send_file(result, mimetype='audio/wav', as_attachment=True, attachment_filename='output.wav')
+        f.close()
+        
+        return send_file(result, mimetype='audio/wav', as_attachment=True, download_name=os.path.basename(result))
         
     return None
 
@@ -174,16 +191,20 @@ def generate_otp_endpoint():
     data = request.json
     msisdn = data.get('msisdn')
     
+    print(msisdn)
+    
     response, status_code = generate_otp(msisdn)
     print(response)
     return jsonify(response), status_code
 
 
-app.route('/validate-otp', methods = ['POST'])
+@app.route('/validate-otp', methods = ['POST'])
 def validate_otp_endpoint():
     data = request.json
     code = data.get("code")
     msisdn = data.get("msisdn")
+        
+    print(msisdn)
     
     respone, status_code = validate_otp(code, msisdn)
     
@@ -220,7 +241,28 @@ def signup():
 
 
 
-app.route('/update_local_dialect', methods=['PUT'])
+# @app.route('/update_local_dialect', methods=['PUT'])
+# def update_local_dialect():
+#     data = request.json
+#     user_id = data.get('user_id')
+#     new_local_dialect = data.get('local_dialect')
+    
+#     if not user_id or not new_local_dialect:
+#         return jsonify({"error": "user_id and local_dialect are required"}), 400
+    
+#     user = User.query.get(user_id)
+#     if not user:
+#         return jsonify({"error": "User not found"}), 404
+    
+#     try:
+#         user.local_dialect = DialectEnum[new_local_dialect.upper()]
+#         db.session.commit()
+#         return jsonify({"message": "Local dialect updated successfully"}), 200
+#     except KeyError:
+#         return jsonify({"error": "Invalid local_dialect"}), 400
+    
+
+@app.route('/update_local_dialect', methods=['PUT'])
 def update_local_dialect():
     data = request.json
     user_id = data.get('user_id')
@@ -229,19 +271,48 @@ def update_local_dialect():
     if not user_id or not new_local_dialect:
         return jsonify({"error": "user_id and local_dialect are required"}), 400
     
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"error": "User not found"}), 404
     
+    return jsonify({"message": "Local dialect updated successfully"}), 200
+    
+    
+
+
+    
+    
+@app.route('/text-to-speech', methods = ['POST'])
+def convert_location_info_to_speech():
     try:
-        user.local_dialect = DialectEnum[new_local_dialect.upper()]
-        db.session.commit()
-        return jsonify({"message": "Local dialect updated successfully"}), 200
-    except KeyError:
-        return jsonify({"error": "Invalid local_dialect"}), 40
+        data = request.json
+        text = data.get('text')
+        local_dialect = data.get('local_dialect')
+        
+        print(text)
+        print(local_dialect)
+
+        translated_text = translate_text(text, local_dialect)
+        
+        print(translate_text)
+
+        if not translated_text:
+            return jsonify({'error': 'Translation service returned an empty response'}), 500
+        
+        print("over them all")
+
+        audio_content = convert_text_to_speech(translated_text, local_dialect)
+
+        if not audio_content:
+            return jsonify({'error': 'Failed to convert text to speech'}), 500
+
+        # Convert the audio content to an in-memory byte buffer
+        audio_fp = BytesIO(audio_content)
+        audio_fp.seek(0)
+
+        return send_file(audio_fp, mimetype='audio/wav', as_attachment=True, download_name='output.wav')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     
-
-
+    
+    
 
 
 
