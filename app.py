@@ -1,3 +1,4 @@
+import datetime
 from io import BytesIO
 from sqlite3 import IntegrityError
 from flask import *
@@ -7,9 +8,10 @@ from werkzeug.utils import secure_filename
 from keras.models import load_model
 import numpy as np
 from PIL import Image, ImageOps
-from model.models import User, db, DialectEnum
+from model.models import OTPStore, User, db, DialectEnum
+from utils import phone_number_format
 from nlp import translate_traffic_sign_predict_to_local_dialect, text_to_speech, translate_text, convert_text_to_speech
-from otp import generate_otp, validate_otp
+from otp import generate_otp, send_otp
 from flask_cors import CORS
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -193,26 +195,56 @@ def upload():
 @app.route('/generate-otp', methods=['POST'])
 def generate_otp_endpoint():
     data = request.json
-    msisdn = data.get('msisdn')
+    msisdn = phone_number_format(data.get('msisdn'))
     
     print(msisdn)
     
-    response, status_code = generate_otp(msisdn)
-    print(response)
-    return jsonify(response), status_code
-
+    if not msisdn:
+        return jsonify({"error": "Phone number is required"}), 400
+    
+    
+    otp_record = OTPStore.query.filter_by(msisdn=msisdn).first()
+    
+    if otp_record and otp_record.expires_at > datetime.datetime.now():
+        if send_otp(msisdn, otp_record.otp):
+            return jsonify({"message": "OTP already exists and has been resent", "otp": otp_record.otp}), 200
+        else:
+            return jsonify({"error": "Failed to resend OTP"}), 500
+    
+    otp = generate_otp()
+    expires_at = datetime.datetime.now() + datetime.timedelta(minutes=5)
+    
+    if otp_record:
+        otp_record.otp = otp
+        otp_record.expires_at = expires_at
+    else:
+        new_otp = OTPStore(msisdn=msisdn, otp=str(otp), expires_at=expires_at)
+        db.session.add(new_otp)
+    
+    db.session.commit()
+    
+    if send_otp(msisdn, otp):
+        return jsonify({"message": "New OTP generated and sent successfully"}), 200
+    else:
+        return jsonify({"error": "Failed to send OTP"}), 500
 
 @app.route('/validate-otp', methods = ['POST'])
 def validate_otp_endpoint():
     data = request.json
     code = data.get("code")
-    msisdn = data.get("msisdn")
+    msisdn = phone_number_format(data.get('msisdn'))
         
-    print(msisdn)
+    if not msisdn or not code:
+        return jsonify({"error": "MSISDN and OTP are required"}), 400
     
-    respone, status_code = validate_otp(code, msisdn)
+    otp_record = OTPStore.query.filter_by(msisdn=msisdn).first()
     
-    return jsonify(respone), status_code
+    if otp_record and otp_record.expires_at > datetime.datetime.now() and otp_record.otp == str(code):
+        db.session.delete(otp_record) 
+        db.session.commit()
+        return jsonify({"message": "OTP is valid"}), 200
+    else:
+        return jsonify({"error": "Invalid OTP"}), 400
 
 
 @app.route('/signup', methods=['POST'])

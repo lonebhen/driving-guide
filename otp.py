@@ -1,3 +1,4 @@
+import random
 import requests
 import json
 import os
@@ -9,63 +10,22 @@ load_dotenv()
 
 client = requests.Session()
 
-
 api_key = os.getenv('ARKESEL_OTP_KEY')
 
-headers = {
-    "api-key": api_key
-}
-
-request_otp_url = "https://sms.arkesel.com/api/otp/generate"
-validate_otp_url = "https://sms.arkesel.com/api/otp/verify"
 
     
     
-def generate_otp(msisdn):
-    print(api_key)
-    formatted_number = phone_number_format(msisdn)
+def generate_otp():
+    return random.randint(100000, 999999)
 
-    if not formatted_number:
-        return {"error": "Invalid phone number"}, 400
-
-    request_body = {
-        "expiry": "5",
-        "length": "6",
-        "medium": "sms",
-        "message": "This is OTP from Driving Guide, %otp_code%",
-        "number": str(formatted_number),
-        "sender_id": "Driving",
-        "type": "numeric"
-    }
-
-    try:
-        response = client.post(request_otp_url, headers=headers, json=request_body)
-        print(response)
-        response.raise_for_status()
-        return response.json(), 200
-    except requests.exceptions.RequestException as e:
-        return {"error": str(e)}, 500
-
-
-
-def validate_otp(code, msisdn):
-    formatted_number = phone_number_format(msisdn)
-
-    if not formatted_number:
-        return {"error": "Invalid phone number"}, 400
+def send_otp(phone_number, otp):
     
-    request_body = {
-        "code": code,
-        "number": formatted_number
-    }
+    msisdn = phone_number_format(phone_number)
     
+    key = api_key
+    sender_id = "Driving"
+    message = f"Your OTP for Driving Guide is {otp}. It expires in 5 minutes"
+    url = f"https://sms.arkesel.com/sms/api?action=send-sms&api_key={key}&to={msisdn}&from={sender_id}&sms={message}"
     
-    
-    try:
-        response = requests.post(validate_otp_url, headers=headers, json=request_body)
-        response.raise_for_status()
-        print(response.text)
-        return response.json(), 200
-    except requests.exceptions.RequestException as e:
-        print("An error occurred:", e)
-        return {"error": "Failed to validate OTP"}, 500
+    response = requests.get(url)
+    return response.status_code == 200
