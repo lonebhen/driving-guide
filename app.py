@@ -192,18 +192,6 @@ def upload():
     return None
 
 
-@app.route('/generate-otp', methods=['POST'])
-def generate_otp_endpoint():
-    data = request.json
-    msisdn = phone_number_format(data.get('msisdn'))
-    
-    print(msisdn)
-    
-    
-    return jsonify({"message": "New OTP generated and sent successfully"}), 200
-    
-
-
 # @app.route('/generate-otp', methods=['POST'])
 # def generate_otp_endpoint():
 #     data = request.json
@@ -211,63 +199,75 @@ def generate_otp_endpoint():
     
 #     print(msisdn)
     
-#     if not msisdn:
-#         return jsonify({"error": "Phone number is required"}), 400
     
+#     return jsonify({"message": "New OTP generated and sent successfully"}), 200
     
-#     otp_record = OTPStore.query.filter_by(msisdn=msisdn).first()
-    
-#     if otp_record and otp_record.expires_at > datetime.datetime.now():
-#         if send_otp(msisdn, otp_record.otp):
-#             return jsonify({"message": "OTP already exists and has been resent", "otp": otp_record.otp}), 200
-#         else:
-#             return jsonify({"error": "Failed to resend OTP"}), 500
-    
-#     otp = generate_otp()
-#     expires_at = datetime.datetime.now() + datetime.timedelta(minutes=5)
-    
-#     if otp_record:
-#         otp_record.otp = otp
-#         otp_record.expires_at = expires_at
-#     else:
-#         new_otp = OTPStore(msisdn=msisdn, otp=str(otp), expires_at=expires_at)
-#         db.session.add(new_otp)
-    
-#     db.session.commit()
-    
-#     if send_otp(msisdn, otp):
-#         return jsonify({"message": "New OTP generated and sent successfully"}), 200
-#     else:
-#         return jsonify({"error": "Failed to send OTP"}), 500
 
-# @app.route('/validate-otp', methods = ['POST'])
-# def validate_otp_endpoint():
-#     data = request.json
-#     code = data.get("code")
-#     msisdn = phone_number_format(data.get('msisdn'))
-        
-#     if not msisdn or not code:
-#         return jsonify({"error": "MSISDN and OTP are required"}), 400
+
+@app.route('/generate-otp', methods=['POST'])
+def generate_otp_endpoint():
+    data = request.json
+    msisdn = phone_number_format(data.get('msisdn'))
     
-#     otp_record = OTPStore.query.filter_by(msisdn=msisdn).first()
+    print(msisdn)
     
-#     if otp_record and otp_record.expires_at > datetime.datetime.now() and otp_record.otp == str(code):
-#         db.session.delete(otp_record) 
-#         db.session.commit()
-#         return jsonify({"message": "OTP is valid"}), 200
-#     else:
-#         return jsonify({"error": "Invalid OTP"}), 400
+    if not msisdn:
+        return jsonify({"error": "Phone number is required"}), 400
     
     
+    otp_record = OTPStore.query.filter_by(msisdn=msisdn).first()
+    
+    if otp_record and otp_record.expires_at > datetime.datetime.now():
+        if send_otp(msisdn, otp_record.otp):
+            return jsonify({"message": "OTP already exists and has been resent", "otp": otp_record.otp}), 200
+        else:
+            return jsonify({"error": "Failed to resend OTP"}), 500
+    
+    otp = generate_otp()
+    expires_at = datetime.datetime.now() + datetime.timedelta(minutes=5)
+    
+    if otp_record:
+        otp_record.otp = otp
+        otp_record.expires_at = expires_at
+    else:
+        new_otp = OTPStore(msisdn=msisdn, otp=str(otp), expires_at=expires_at)
+        db.session.add(new_otp)
+    
+    db.session.commit()
+    
+    if send_otp(msisdn, otp):
+        return jsonify({"message": "New OTP generated and sent successfully"}), 200
+    else:
+        return jsonify({"error": "Failed to send OTP"}), 500
+
 @app.route('/validate-otp', methods = ['POST'])
 def validate_otp_endpoint():
     data = request.json
     code = data.get("code")
     msisdn = phone_number_format(data.get('msisdn'))
         
+    if not msisdn or not code:
+        return jsonify({"error": "MSISDN and OTP are required"}), 400
+    
+    otp_record = OTPStore.query.filter_by(msisdn=msisdn).first()
+    
+    if otp_record and otp_record.expires_at > datetime.datetime.now() and otp_record.otp == str(code):
+        db.session.delete(otp_record) 
+        db.session.commit()
+        return jsonify({"message": "OTP is valid"}), 200
+    else:
+        return jsonify({"error": "Invalid OTP"}), 400
+    
+    
+# @app.route('/validate-otp', methods = ['POST'])
+# def validate_otp_endpoint():
+#     data = request.json
+#     code = data.get("code")
+#     msisdn = phone_number_format(data.get('msisdn'))
+        
     
        
-    return jsonify({"message": "OTP is valid"}), 200
+#     return jsonify({"message": "OTP is valid"}), 200
     
 
 
