@@ -2,12 +2,12 @@ import datetime
 from io import BytesIO
 from sqlite3 import IntegrityError
 from flask import *
-import tensorflow as tf
+# import tensorflow as tf
 import os
 from werkzeug.utils import secure_filename
-from keras.models import load_model
+# from keras.models import load_model
 import numpy as np
-from PIL import Image, ImageOps
+# from PIL import Image, ImageOps
 from model.models import OTPStore, User, db, DialectEnum
 from utils import phone_number_format
 from nlp import translate_traffic_sign_predict_to_local_dialect, text_to_speech, translate_text, convert_text_to_speech
@@ -132,25 +132,25 @@ class_names = {
             }
 
 
-def model_predict(img_path, local_dialect):
-    model = load_model('./model/augmented.h5')
-    image = Image.open(img_path)
-    image = image.resize((32, 32))
+# def model_predict(img_path, local_dialect):
+#     model = load_model('./model/augmented.h5')
+#     image = Image.open(img_path)
+#     image = image.resize((32, 32))
     
-    image_arr = np.array(image.convert('RGB'))
-    image_arr.shape = (1, 32, 32, 3)
+#     image_arr = np.array(image.convert('RGB'))
+#     image_arr.shape = (1, 32, 32, 3)
     
-    result = model.predict(image_arr)
+#     result = model.predict(image_arr)
     
-    ind = np.argmax(result)
+#     ind = np.argmax(result)
     
-    resolved_prediction =  class_names[classes[ind]]
+#     resolved_prediction =  class_names[classes[ind]]
     
-    traffic_sign =  translate_traffic_sign_predict_to_local_dialect(resolved_prediction, local_dialect)
+#     traffic_sign =  translate_traffic_sign_predict_to_local_dialect(resolved_prediction, local_dialect)
     
-    to_speech = text_to_speech(traffic_sign, local_dialect)
+#     to_speech = text_to_speech(traffic_sign, local_dialect)
     
-    return to_speech
+#     return to_speech
 
 @app.route('/hello', methods= ['GET'])
 def keep_server_awake():
@@ -159,37 +159,37 @@ def keep_server_awake():
     
 
 
-@app.route('/predict', methods=['GET', 'POST'])
-def upload():
-    if request.method == 'POST':
-        # Get the file from post request
-        f = request.files['file']
-        file_path = secure_filename(f.filename)
-        f.save(file_path)
+# @app.route('/predict', methods=['GET', 'POST'])
+# def upload():
+#     if request.method == 'POST':
+#         # Get the file from post request
+#         f = request.files['file']
+#         file_path = secure_filename(f.filename)
+#         f.save(file_path)
         
-        json_data = request.form.get('json')
-        if json_data:
-            try:
-                json_payload = json.loads(json_data)
-                local_dialect = json_payload.get('local_dialect')
-                # Use local_dialect as needed
-            except json.JSONDecodeError as e:
-                return jsonify({"error": "Invalid JSON data"}), 400
-        else:
-            return jsonify({"error": "No JSON data found in the request"}),
+#         json_data = request.form.get('json')
+#         if json_data:
+#             try:
+#                 json_payload = json.loads(json_data)
+#                 local_dialect = json_payload.get('local_dialect')
+#                 # Use local_dialect as needed
+#             except json.JSONDecodeError as e:
+#                 return jsonify({"error": "Invalid JSON data"}), 400
+#         else:
+#             return jsonify({"error": "No JSON data found in the request"}),
 
-        # Make prediction
-        result = model_predict(file_path, local_dialect)
+#         # Make prediction
+#         result = model_predict(file_path, local_dialect)
         
-        if result is None:
-            return jsonify({"error": "Prediction failed, no result returned"}), 500
+#         if result is None:
+#             return jsonify({"error": "Prediction failed, no result returned"}), 500
 
-        print(result)
-        f.close()
+#         print(result)
+#         f.close()
         
-        return send_file(result, mimetype='audio/wav', as_attachment=True, download_name=os.path.basename(result))
+#         return send_file(result, mimetype='audio/wav', as_attachment=True, download_name=os.path.basename(result))
         
-    return None
+#     return None
 
 
 # @app.route('/generate-otp', methods=['POST'])
